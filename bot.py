@@ -1,4 +1,4 @@
-import os, logging, json, tempfile
+import os, logging, json, tempfile, traceback
 from datetime import date
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
@@ -10,12 +10,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Debug: stampa tutte le variabili d'ambiente disponibili
-logger.info(f"Variabili d'ambiente disponibili: {list(os.environ.keys())}")
-
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN', '')
 if not TELEGRAM_TOKEN:
-    raise ValueError("TELEGRAM_TOKEN non trovato nelle variabili d'ambiente!")
+    raise ValueError("TELEGRAM_TOKEN non trovato!")
 
 oauth_data = os.environ.get('YTMUSIC_OAUTH')
 if oauth_data:
@@ -36,16 +33,17 @@ def get_or_create_playlist() -> str:
         return daily_state['playlist_id']
 
     name = f'jukebox it - {today}'
+    logger.info(f'Creo playlist: {name}')
     playlist_id = ytmusic.create_playlist(
         title=name,
         description='Playlist del giorno - JukeBox IT'
     )
+    logger.info(f'Playlist creata con ID: {playlist_id}')
     daily_state = {
         'date': today,
         'playlist_id': playlist_id,
         'track_ids': set()
     }
-    logger.info(f'Nuova playlist creata: {name} ({playlist_id})')
     return playlist_id
 
 async def add_song(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -60,7 +58,9 @@ async def add_song(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user  = update.effective_user.first_name
 
     try:
+        logger.info(f'Ricerca brano: {query}')
         results = ytmusic.search(query, filter='songs', limit=1)
+        logger.info(f'Risultati ricerca: {results}')
 
         if not results:
             await update.message.reply_text(
@@ -74,6 +74,8 @@ async def add_song(update: Update, context: ContextTypes.DEFAULT_TYPE):
         track_name = track['title']
         artist     = track['artists'][0]['name']
 
+        logger.info(f'Brano trovato: {track_name} - {artist} ({track_id})')
+
         playlist_id = get_or_create_playlist()
 
         if track_id in daily_state['track_ids']:
@@ -82,6 +84,7 @@ async def add_song(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
+        logger.info(f'Aggiungo brano {track_id} alla playlist {playlist_id}')
         ytmusic.add_playlist_items(playlist_id, [track_id])
         daily_state['track_ids'].add(track_id)
 
@@ -92,7 +95,7 @@ async def add_song(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     except Exception as e:
-        logger.error(f'Errore in add_song: {e}')
+        logger.error(f'Errore completo: {traceback.format_exc()}')
         await update.message.reply_text(
             '❌ Si è verificato un errore. Riprova tra qualche istante.'
         )
