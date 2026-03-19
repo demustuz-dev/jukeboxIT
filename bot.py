@@ -10,7 +10,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-TELEGRAM_TOKEN = os.environ['TELEGRAM_TOKEN']
+# Debug: stampa tutte le variabili d'ambiente disponibili
+logger.info(f"Variabili d'ambiente disponibili: {list(os.environ.keys())}")
+
+TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN', '')
+if not TELEGRAM_TOKEN:
+    raise ValueError("TELEGRAM_TOKEN non trovato nelle variabili d'ambiente!")
 
 oauth_data = os.environ.get('YTMUSIC_OAUTH')
 if oauth_data:
