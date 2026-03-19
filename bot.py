@@ -14,14 +14,7 @@ TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN', '')
 if not TELEGRAM_TOKEN:
     raise ValueError("TELEGRAM_TOKEN non trovato!")
 
-oauth_data = os.environ.get('YTMUSIC_OAUTH')
-if oauth_data:
-    tmp = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
-    tmp.write(oauth_data)
-    tmp.flush()
-    ytmusic = YTMusic(tmp.name)
-else:
-    ytmusic = YTMusic('oauth.json')
+ytmusic = YTMusic('ytmusic_auth.json')
 
 daily_state: dict = {}
 
@@ -60,7 +53,6 @@ async def add_song(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         logger.info(f'Ricerca brano: {query}')
         results = ytmusic.search(query, filter='songs', limit=1)
-        logger.info(f'Risultati ricerca: {results}')
 
         if not results:
             await update.message.reply_text(
