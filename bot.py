@@ -82,7 +82,6 @@ async def add_song(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = ' '.join(context.args)
     user  = update.effective_user.first_name
 
-    # Controlla limite giornaliero
     today = date.today().strftime('%d-%m-%Y')
     if daily_state.get('date') == today:
         if daily_state.get('count', 0) >= DAILY_LIMIT:
@@ -142,7 +141,6 @@ async def add_song(update: Update, context: ContextTypes.DEFAULT_TYPE):
         daily_state['count'] = daily_state.get('count', 0) + 1
         remaining = DAILY_LIMIT - daily_state['count']
 
-        # Avviso quando mancano 10 brani al limite
         if remaining == 10:
             await update.message.reply_text(
                 f'✅ {user} ha aggiunto:\n'
@@ -171,37 +169,15 @@ async def show_playlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    pid      = daily_state['playlist_id']
-    url      = f'https://music.youtube.com/playlist?list={pid}'
-    count    = daily_state.get('count', 0)
+    pid       = daily_state['playlist_id']
+    url       = f'https://music.youtube.com/playlist?list={pid}'
+    count     = daily_state.get('count', 0)
     remaining = DAILY_LIMIT - count
     await update.message.reply_text(
         f'📋 Playlist di oggi ({daily_state["date"]}): {count} brani\n'
         f'🎵 Brani rimanenti oggi: {remaining}/{DAILY_LIMIT}\n'
         f'{url}'
     )
-
-async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        '🎵 JukeBox IT — Comandi:\n\n'
-        '/add Titolo - Artista  →  Aggiunge un brano alla playlist\n'
-        '/playlist              →  Link alla playlist + brani rimanenti\n'
-        '/help                  →  Mostra questo messaggio'
-    )
-
-def main():
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
-    app.add_handler(CommandHandler('add',      add_song))
-    app.add_handler(CommandHandler('playlist', show_playlist))
-    app.add_handler(CommandHandler('help',     help_cmd))
-    app.add_handler(CommandHandler('regole',   regole_cmd))
-    app.add_handler(CommandHandler('regole',   regole_cmd))
-    logger.info('Bot JukeBox IT avviato.')
-    app.run_polling()
-
-if __name__ == '__main__':
-    main()
-
 
 async def regole_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -211,7 +187,7 @@ async def regole_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         'Esempio: /add Bohemian Rhapsody - Queen\n\n'
         '📌 Regole:\n'
         '• Ogni brano può essere aggiunto una sola volta al giorno (no doppioni)\n'
-        '• Limite massimo: 60 brani al giorno\n'
+        f'• Limite massimo: {DAILY_LIMIT} brani al giorno\n'
         '• La playlist si rinnova automaticamente ogni mattina\n\n'
         '📱 Comandi disponibili:\n'
         '/add Titolo - Artista  →  Aggiunge un brano\n'
@@ -219,3 +195,24 @@ async def regole_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         '/regole                →  Mostra queste regole\n'
         '/help                  →  Mostra i comandi'
     )
+
+async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        '🎵 JukeBox IT — Comandi:\n\n'
+        '/add Titolo - Artista  →  Aggiunge un brano alla playlist\n'
+        '/playlist              →  Link alla playlist + brani rimanenti\n'
+        '/regole                →  Regole del JukeBox\n'
+        '/help                  →  Mostra questo messaggio'
+    )
+
+def main():
+    app = Application.builder().token(TELEGRAM_TOKEN).build()
+    app.add_handler(CommandHandler('add',      add_song))
+    app.add_handler(CommandHandler('playlist', show_playlist))
+    app.add_handler(CommandHandler('regole',   regole_cmd))
+    app.add_handler(CommandHandler('help',     help_cmd))
+    logger.info('Bot JukeBox IT avviato.')
+    app.run_polling()
+
+if __name__ == '__main__':
+    main()
