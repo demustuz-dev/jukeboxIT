@@ -194,8 +194,28 @@ def main():
     app.add_handler(CommandHandler('add',      add_song))
     app.add_handler(CommandHandler('playlist', show_playlist))
     app.add_handler(CommandHandler('help',     help_cmd))
+    app.add_handler(CommandHandler('regole',   regole_cmd))
+    app.add_handler(CommandHandler('regole',   regole_cmd))
     logger.info('Bot JukeBox IT avviato.')
     app.run_polling()
 
 if __name__ == '__main__':
     main()
+
+
+async def regole_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        '📋 Regole del JukeBox IT:\n\n'
+        '🎵 Come aggiungere un brano:\n'
+        'Usa il comando /add seguito dal titolo e artista\n'
+        'Esempio: /add Bohemian Rhapsody - Queen\n\n'
+        '📌 Regole:\n'
+        '• Ogni brano può essere aggiunto una sola volta al giorno (no doppioni)\n'
+        '• Limite massimo: 60 brani al giorno\n'
+        '• La playlist si rinnova automaticamente ogni mattina\n\n'
+        '📱 Comandi disponibili:\n'
+        '/add Titolo - Artista  →  Aggiunge un brano\n'
+        '/playlist              →  Link alla playlist di oggi\n'
+        '/regole                →  Mostra queste regole\n'
+        '/help                  →  Mostra i comandi'
+    )
