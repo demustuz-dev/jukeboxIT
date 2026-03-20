@@ -16,6 +16,8 @@ TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN', '')
 if not TELEGRAM_TOKEN:
     raise ValueError("TELEGRAM_TOKEN non trovato!")
 
+DAILY_LIMIT = 60
+
 def get_youtube_client():
     token_data = os.environ.get('GOOGLE_TOKEN')
     if token_data:
@@ -64,7 +66,8 @@ def get_or_create_playlist(youtube) -> str:
     daily_state = {
         'date': today,
         'playlist_id': playlist_id,
-        'track_ids': set()
+        'track_ids': set(),
+        'count': 0
     }
     return playlist_id
 
@@ -78,6 +81,16 @@ async def add_song(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     query = ' '.join(context.args)
     user  = update.effective_user.first_name
+
+    # Controlla limite giornaliero
+    today = date.today().strftime('%d-%m-%Y')
+    if daily_state.get('date') == today:
+        if daily_state.get('count', 0) >= DAILY_LIMIT:
+            await update.message.reply_text(
+                f'🚫 Limite giornaliero raggiunto! ({DAILY_LIMIT} brani)\n'
+                f'La playlist si resetta domani mattina. 🎵'
+            )
+            return
 
     try:
         youtube = get_youtube_client()
@@ -101,7 +114,6 @@ async def add_song(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         video_id    = items[0]['id']['videoId']
         video_title = items[0]['snippet']['title']
-        channel     = items[0]['snippet']['channelTitle']
 
         logger.info(f'Brano trovato: {video_title} ({video_id})')
 
@@ -127,12 +139,23 @@ async def add_song(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ).execute()
 
         daily_state['track_ids'].add(video_id)
+        daily_state['count'] = daily_state.get('count', 0) + 1
+        remaining = DAILY_LIMIT - daily_state['count']
 
-        await update.message.reply_text(
-            f'✅ {user} ha aggiunto:\n'
-            f'🎵 {video_title}\n'
-            f'📋 Playlist: jukebox it - {daily_state["date"]}'
-        )
+        # Avviso quando mancano 10 brani al limite
+        if remaining == 10:
+            await update.message.reply_text(
+                f'✅ {user} ha aggiunto:\n'
+                f'🎵 {video_title}\n'
+                f'📋 Playlist: jukebox it - {daily_state["date"]}\n\n'
+                f'⚠️ Attenzione: mancano solo 10 brani al limite giornaliero!'
+            )
+        else:
+            await update.message.reply_text(
+                f'✅ {user} ha aggiunto:\n'
+                f'🎵 {video_title}\n'
+                f'📋 Playlist: jukebox it - {daily_state["date"]}'
+            )
 
     except Exception as e:
         logger.error(f'Errore completo: {traceback.format_exc()}')
@@ -148,18 +171,21 @@ async def show_playlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    pid   = daily_state['playlist_id']
-    url   = f'https://music.youtube.com/playlist?list={pid}'
-    count = len(daily_state['track_ids'])
+    pid      = daily_state['playlist_id']
+    url      = f'https://music.youtube.com/playlist?list={pid}'
+    count    = daily_state.get('count', 0)
+    remaining = DAILY_LIMIT - count
     await update.message.reply_text(
-        f'📋 Playlist di oggi ({daily_state["date"]}): {count} brani\n{url}'
+        f'📋 Playlist di oggi ({daily_state["date"]}): {count} brani\n'
+        f'🎵 Brani rimanenti oggi: {remaining}/{DAILY_LIMIT}\n'
+        f'{url}'
     )
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         '🎵 JukeBox IT — Comandi:\n\n'
         '/add Titolo - Artista  →  Aggiunge un brano alla playlist\n'
-        '/playlist              →  Link alla playlist di oggi\n'
+        '/playlist              →  Link alla playlist + brani rimanenti\n'
         '/help                  →  Mostra questo messaggio'
     )
 
