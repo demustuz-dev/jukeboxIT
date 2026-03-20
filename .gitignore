@@ -1,4 +1,5 @@
 oauth.json
 oauth_new.json
+client_secret.json
 __pycache__/
 *.pyc
